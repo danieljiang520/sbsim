@@ -248,9 +248,25 @@ def get_episode_data(working_dir: str) -> pd.DataFrame:
   """
   episode_dirs = os.listdir(working_dir)
   date_extractor = operator.itemgetter(slice(-13, None))
+  print(episode_dirs)
+  # Filter to only include directories that match the episode format
+  # Episode directories end with _yymmdd_HHMMSS (13 characters)
+  filtered_episode_dirs = []
+  for ep_dir in episode_dirs:
+    if len(ep_dir) >= 13:
+      timestamp_part = date_extractor(ep_dir)
+      # Check if the timestamp part matches the expected format
+      if re.match(r'^\d{6}_\d{6}$', timestamp_part):
+        filtered_episode_dirs.append(ep_dir)
+
+  if not filtered_episode_dirs:
+    # Return empty DataFrame if no valid episode directories found
+    return pd.DataFrame(columns=['execution_time', 'episode_start_time',
+                                  'episode_end_time', 'duration',
+                                  'number_updates', 'label'])
 
   execution_times = pd.to_datetime(
-      list(map(date_extractor, episode_dirs)), format='%y%m%d_%H%M%S', utc=True
+      list(map(date_extractor, filtered_episode_dirs)), format='%y%m%d_%H%M%S', utc=True
   )
   episode_start_times = []
   episode_end_times = []
@@ -260,7 +276,7 @@ def get_episode_data(working_dir: str) -> pd.DataFrame:
   episode_execution_times = []
   episode_datas = []
 
-  for episode_dir, execution_time in zip(episode_dirs, execution_times):
+  for episode_dir, execution_time in zip(filtered_episode_dirs, execution_times):
     glob_pattern = os.path.join(
         working_dir, episode_dir, 'observation_response*'
     )
